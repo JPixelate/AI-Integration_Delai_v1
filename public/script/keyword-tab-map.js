@@ -99,6 +99,19 @@ function showTabsByKeyword(text) {
       const shouldShow = matchedTabIds.has(id);
       const alreadyVisible = tabElement.style.display === 'block';
 
+      // Special handling for hotels tab - preserve it if it has content
+      if (id === 'hotels-tab' && alreadyVisible && !shouldShow) {
+         const mapContainer = document.getElementById('hotelMapContainer');
+         const detailPanel = document.getElementById('hotelDetailPanel');
+
+         // Keep hotels tab visible if map or detail panel is showing
+         if ((mapContainer && mapContainer.style.display === 'block') ||
+             (detailPanel && detailPanel.style.display === 'block')) {
+            console.log(`[PRESERVE] Keeping hotels tab visible - has active content`);
+            return; // Don't hide the hotels tab
+         }
+      }
+
       if (shouldShow && !alreadyVisible) {
          tabElement.style.display = 'block';
          initializeTabContent(id, tabElement);

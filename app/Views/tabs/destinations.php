@@ -1,1 +1,1 @@
-<h1>Destinations</h1>
+<!-- <h1>Destinations</h1> -->

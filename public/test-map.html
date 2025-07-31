@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hotel Map Test</title>
+    <style>
+        #map { height: 400px; width: 100%; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Hotel Map Test</h1>
+    <button class="test-button" onclick="testCebuHotels()">Test Cebu Hotels</button>
+    <button class="test-button" onclick="testManilaHotels()">Test Manila Hotels</button>
+    
+    <div id="map"></div>
+    
+    <div id="results"></div>
+
+    <script>
+        let map;
+        let markers = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 6,
+                center: { lat: 14.5995, lng: 120.9842 }, // Philippines center
+                disableDefaultUI: true, // Remove ALL UI controls
+                clickableIcons: false,
+                keyboardShortcuts: false,
+                styles: [
+                    {
+                        "featureType": "administrative.land_parcel",
+                        "elementType": "labels",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "poi",
+                        "elementType": "labels.text",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "poi.business",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road",
+                        "elementType": "labels.icon",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road.local",
+                        "elementType": "labels",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "transit",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    }
+                ]
+            });
+            console.log('Map initialized successfully');
+        }
+
+        function testCebuHotels() {
+            const cebuHotels = [
+                {
+                    hotelName: "Cebu Grand Hotel",
+                    latitude: "10.29384100000000000000",
+                    longitude: "123.90123400000000000000",
+                    hotelRating: 4,
+                    address: "Corner Junquera-Legaspi Streets, Cebu City",
+                    total: "3250.00",
+                    currency: "PHP"
+                }
+            ];
+            
+            addHotelMarkers(cebuHotels);
+            document.getElementById('results').innerHTML = '<h3>Cebu Hotels Loaded</h3><p>1 hotel marker added to map</p>';
+        }
+
+        function testManilaHotels() {
+            const manilaHotels = [
+                {
+                    hotelName: "Rom's Place",
+                    latitude: "14.57821700000000000000",
+                    longitude: "121.05094700000000000000",
+                    hotelRating: 2,
+                    address: "Urban Deca Tower, 40 Kalayaan Avenue, Makati",
+                    total: "1540.15",
+                    currency: "PHP"
+                },
+                {
+                    hotelName: "Manila Bay Hotel",
+                    latitude: "14.58456200000000000000",
+                    longitude: "120.98234500000000000000",
+                    hotelRating: 3,
+                    address: "1588 M.H. Del Pilar Street, Ermita, Manila",
+                    total: "2850.75",
+                    currency: "PHP"
+                }
+            ];
+            
+            addHotelMarkers(manilaHotels);
+            document.getElementById('results').innerHTML = '<h3>Manila Hotels Loaded</h3><p>2 hotel markers added to map</p>';
+        }
+
+        function addHotelMarkers(hotels) {
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+            
+            const bounds = new google.maps.LatLngBounds();
+            
+            hotels.forEach(hotel => {
+                const lat = parseFloat(hotel.latitude);
+                const lng = parseFloat(hotel.longitude);
+                
+                if (isNaN(lat) || isNaN(lng)) {
+                    console.warn('Invalid coordinates for hotel:', hotel.hotelName);
+                    return;
+                }
+
+                const position = { lat, lng };
+                
+                // Create marker element with hotel name
+                const markerElement = document.createElement('div');
+                markerElement.style.display = 'flex';
+                markerElement.style.flexDirection = 'column';
+                markerElement.style.alignItems = 'center';
+                markerElement.style.cursor = 'pointer';
+
+                // Hotel name label
+                const nameLabel = document.createElement('div');
+                nameLabel.textContent = hotel.hotelName;
+                nameLabel.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                nameLabel.style.color = '#333';
+                nameLabel.style.padding = '4px 8px';
+                nameLabel.style.borderRadius = '4px';
+                nameLabel.style.fontSize = '12px';
+                nameLabel.style.fontWeight = '500';
+                nameLabel.style.fontFamily = 'Arial, sans-serif';
+                nameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                nameLabel.style.marginBottom = '4px';
+                nameLabel.style.whiteSpace = 'nowrap';
+
+                // Hotel icon
+                const iconElement = document.createElement('div');
+                iconElement.style.width = '32px';
+                iconElement.style.height = '32px';
+                iconElement.style.backgroundImage = `url(${createHotelIcon(hotel.hotelRating)})`;
+                iconElement.style.backgroundSize = 'contain';
+                iconElement.style.backgroundRepeat = 'no-repeat';
+
+                markerElement.appendChild(nameLabel);
+                markerElement.appendChild(iconElement);
+
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: hotel.hotelName,
+                    icon: {
+                        url: createHotelIcon(),
+                        scaledSize: new google.maps.Size(32, 32),
+                        anchor: new google.maps.Point(16, 32),
+                        labelOrigin: new google.maps.Point(16, -10)
+                    },
+                    label: {
+                        text: hotel.hotelName,
+                        color: '#000',
+                        fontSize: '13px',
+                        fontWeight: '600'
+                    }
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div>
+                            <h3>${hotel.hotelName}</h3>
+                            <p><strong>Rating:</strong> ${hotel.hotelRating}/5 stars</p>
+                            <p><strong>Address:</strong> ${hotel.address}</p>
+                            <p><strong>Price:</strong> ${hotel.currency} ${hotel.total} per night</p>
+                        </div>
+                    `
+                });
+
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                markers.push(marker);
+                bounds.extend(position);
+            });
+
+            if (markers.length > 0) {
+                map.fitBounds(bounds);
+            }
+        }
+
+        function createHotelIcon(rating) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+
+            // White circle background
+            ctx.beginPath();
+            ctx.arc(16, 16, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw minimalist bed icon in black
+            ctx.fillStyle = '#000000';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+
+            // Bed base (mattress)
+            ctx.fillRect(8, 18, 16, 4);
+
+            // Bed headboard
+            ctx.fillRect(7, 14, 2, 6);
+
+            // Bed legs
+            ctx.fillRect(9, 22, 1, 3);
+            ctx.fillRect(22, 22, 1, 3);
+
+            // Pillow (small rectangle)
+            ctx.fillRect(10, 16, 4, 2);
+
+            return canvas.toDataURL();
+        }
+    </script>
+    
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&libraries=marker&loading=async&callback=initMap"></script>
+</body>
+</html>

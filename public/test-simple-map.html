@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Map Test</title>
+    <style>
+        #map { height: 400px; width: 100%; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Simple Google Maps Test</h1>
+    <div id="status" class="status">Loading...</div>
+    <button class="test-button" onclick="testMapCreation()">Test Map Creation</button>
+    
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let isGoogleMapsReady = false;
+
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isError ? 'error' : 'success');
+        }
+
+        function initMap() {
+            console.log('Google Maps callback triggered');
+            
+            // Wait a moment for all Google Maps objects to be available
+            setTimeout(() => {
+                if (typeof google !== 'undefined' && google.maps && google.maps.Map) {
+                    isGoogleMapsReady = true;
+                    updateStatus('Google Maps API loaded successfully');
+                    console.log('Google Maps API is ready');
+                } else {
+                    updateStatus('Google Maps API loaded but objects not available', true);
+                    console.error('Google Maps objects not available');
+                }
+            }, 100);
+        }
+
+        function testMapCreation() {
+            if (!isGoogleMapsReady) {
+                updateStatus('Google Maps API not ready yet', true);
+                return;
+            }
+
+            try {
+                map = new google.maps.Map(document.getElementById('map'), {
+                    zoom: 10,
+                    center: { lat: 14.5995, lng: 120.9842 },
+                    mapTypeId: google.maps.MapTypeId.ROADMAP,
+                    mapId: 'DEMO_MAP_ID', // Required for AdvancedMarkerElement
+                    disableDefaultUI: true, // Remove ALL UI controls
+                    clickableIcons: false,
+                    keyboardShortcuts: false,
+                    styles: [
+                        {
+                            "featureType": "administrative.land_parcel",
+                            "elementType": "labels",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        },
+                        {
+                            "featureType": "poi",
+                            "elementType": "labels.text",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        },
+                        {
+                            "featureType": "poi.business",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        },
+                        {
+                            "featureType": "road",
+                            "elementType": "labels.icon",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        },
+                        {
+                            "featureType": "road.local",
+                            "elementType": "labels",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        },
+                        {
+                            "featureType": "transit",
+                            "stylers": [
+                                {
+                                    "visibility": "off"
+                                }
+                            ]
+                        }
+                    ]
+                });
+
+                // Add a test marker using AdvancedMarkerElement
+                const marker = new google.maps.marker.AdvancedMarkerElement({
+                    position: { lat: 14.5995, lng: 120.9842 },
+                    map: map,
+                    title: 'Test Marker'
+                });
+
+                updateStatus('Map created successfully with advanced marker');
+                console.log('Map created successfully');
+            } catch (error) {
+                updateStatus('Error creating map: ' + error.message, true);
+                console.error('Error creating map:', error);
+            }
+        }
+
+        // Auto-test after a delay
+        setTimeout(() => {
+            if (isGoogleMapsReady) {
+                testMapCreation();
+            }
+        }, 2000);
+    </script>
+    
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&libraries=marker&loading=async&callback=initMap"></script>
+</body>
+</html>

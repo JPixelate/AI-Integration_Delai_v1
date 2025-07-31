@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+  <!-- Google Maps API will be loaded dynamically when needed -->
+
   <link rel="stylesheet" href="<?= base_url('css/header.css') ?>">
   <link rel="stylesheet" href="<?= base_url('css/home.css') ?>">
 </head>
@@ -67,6 +69,7 @@
                   <button class="action-btn"><i class="fas fa-pencil-alt"></i> Modify trip</button>
                   <button class="action-btn"><i class="fas fa-tag"></i> Make it cheaper</button>
                   <button class="action-btn"><i class="fas fa-plane"></i> Find me flights</button>
+                  <button class="action-btn hotel-search"><i class="fas fa-hotel"></i> Find me hotels</button>
                </div>
 
                <div class="chat-input">
@@ -76,7 +79,6 @@
 
                <div class="chat-buttons">
                   <button class="chat-toggle"><i class="fas fa-comment"></i>New Chat</button>
-                  <button class="hotel-search"><i class="fas fa-hotel"></i> Hotel Search</button>
                </div>
             </div>
          </div>

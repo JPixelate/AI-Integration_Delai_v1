@@ -43,3 +43,186 @@
    font-size: small;
    color: #666666;
 }
+
+/* Hotel Card Styles */
+.hotel-card {
+   background: white;
+   border: 1px solid #ddd;
+   border-radius: 8px;
+   padding: 20px;
+   margin-bottom: 15px;
+   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+   transition: box-shadow 0.3s ease;
+}
+
+.hotel-card:hover {
+   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.hotel-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: flex-start;
+   margin-bottom: 10px;
+}
+
+.hotel-name {
+   font-size: medium;
+   font-weight: bold;
+   color: #2c3e50;
+   margin: 0;
+   flex: 1;
+}
+
+.hotel-rating {
+   color: #f39c12;
+   font-size: small;
+   white-space: nowrap;
+   margin-left: 10px;
+}
+
+.hotel-address {
+   color: #666;
+   margin-bottom: 10px;
+   font-size: small;
+}
+
+.hotel-address i {
+   margin-right: 5px;
+}
+
+.hotel-price {
+   font-size: medium;
+   font-weight: bold;
+   color: #27ae60;
+   margin-bottom: 10px;
+}
+
+.hotel-fare-type {
+   margin-bottom: 15px;
+}
+
+.fare-badge {
+   padding: 4px 12px;
+   border-radius: 36px;
+   font-size: small;
+   font-weight: bold;
+}
+
+.fare-badge.refundable {
+   background: #d4edda;
+   color: #155724;
+}
+
+.fare-badge.non-refundable {
+   background: #f8d7da;
+   color: #721c24;
+}
+
+.hotel-image {
+   border-radius: 4px;
+   margin: 10px 0;
+}
+
+.book-btn {
+   background: #28a745;
+   color: white;
+   padding: 8px 24px;
+   border: none;
+   border-radius: 36px;
+   cursor: pointer;
+   font-size: small;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   transition: background 0.3s ease;
+}
+
+.book-btn:hover {
+   background: #218838;
+}
+
+.book-btn i {
+   font-size: small;
+}
+
+/* Hotel Map Integration Styles */
+.hotel-map-container {
+   margin: 20px 0;
+   border-radius: 12px;
+   overflow: hidden;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+   background: white;
+}
+
+.hotel-map {
+   width: 100%;
+   height: 350px;
+   border: none;
+}
+
+/* Info Window Custom Styles */
+.gm-style .gm-style-iw-c {
+   padding: 0;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.gm-style .gm-style-iw-d {
+   overflow: hidden !important;
+}
+
+/* Hotel card hover effects */
+.hotel-card {
+   transition: all 0.3s ease;
+   cursor: pointer;
+}
+
+.hotel-card:hover {
+   transform: translateY(-2px);
+   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+/* Map marker animation */
+@keyframes markerBounce {
+   0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+   }
+   40% {
+      transform: translateY(-10px);
+   }
+   60% {
+      transform: translateY(-5px);
+   }
+}
+
+.marker-bounce {
+   animation: markerBounce 1s ease-in-out;
+}
+
+/* Loading state for map */
+.map-loading {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   height: 350px;
+   background: #f8f9fa;
+   color: #666;
+   font-size: 14px;
+}
+
+.map-loading i {
+   margin-right: 8px;
+   animation: spin 1s linear infinite;
+}
+
+/* Responsive map adjustments */
+@media (max-width: 768px) {
+   .hotel-map {
+      height: 250px;
+   }
+
+   .hotel-map-container {
+      margin: 15px 0;
+   }
+}

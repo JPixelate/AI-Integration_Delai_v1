@@ -63,10 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       chatHistory.length = 0; // Clear history
 
-      chatHistory.push({
-         role: 'system',
-         content: `You are Delight, a warm, friendly, and hospitable Filipino travel companion from "Delightful Philippines", ...`
-      });
+      // No system prompt - let the AI be intelligent naturally
 
    }
 
@@ -89,6 +86,24 @@ document.addEventListener('DOMContentLoaded', () => {
          if (!response.ok) throw new Error('API request failed');
 
          const data = await response.json();
+
+         // Handle hotel search results with AI processing
+         if (data.hotel_search && data.show_hotels_tab && data.hotel_results) {
+            showHotelsTab();
+
+            // Always show processing state first - right panel waits for AI
+            showHotelProcessingState();
+
+            // Simulate AI thinking time based on number of hotels
+            const hotelCount = data.hotel_results?.itineraries?.length || 0;
+            const processingTime = Math.max(2000, hotelCount * 800); // 800ms per hotel, minimum 2 seconds
+
+            // Display results after AI "finishes" generating descriptions
+            setTimeout(() => {
+               displayHotelResults(data.hotel_results, data.destination);
+            }, processingTime);
+         }
+
          return data.reply || "No answer available right now. Sorry.";
 
       }
@@ -108,9 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
       let contentHtml;
       if (role === 'assistant') {
          try {
-            contentHtml = marked.parse(text);
+            // Convert newlines to proper line breaks for hotel lists
+            const textWithBreaks = text.replace(/\n/g, '<br>');
+            contentHtml = marked.parse(textWithBreaks);
          } catch {
-            contentHtml = `<p>${text}</p>`;
+            // Fallback: convert newlines to <br> tags
+            const textWithBreaks = text.replace(/\n/g, '<br>');
+            contentHtml = `<p>${textWithBreaks}</p>`;
          }
       } else {
          contentHtml = `<p>${text}</p>`;
@@ -165,11 +184,15 @@ document.addEventListener('DOMContentLoaded', () => {
             chatBody.scrollTop = chatBody.scrollHeight;
             setTimeout(typeChar, speed);
          } else {
-            // 🟢 Render as Markdown after typing finishes
+            // 🟢 Render as Markdown after typing finishes - PRESERVE LINE BREAKS!
             try {
-               contentDiv.innerHTML = marked.parse(text);
+               // Convert newlines to proper line breaks for hotel lists
+               const textWithBreaks = text.replace(/\n/g, '<br>');
+               contentDiv.innerHTML = marked.parse(textWithBreaks);
             } catch {
-               contentDiv.innerText = text;
+               // Fallback: convert newlines to <br> tags
+               const textWithBreaks = text.replace(/\n/g, '<br>');
+               contentDiv.innerHTML = textWithBreaks;
             }
          }
       }
@@ -316,6 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const combinedText = `${userInput} ${aiReply}`;
+
+      // Check if this is a new hotel request
+      if (isNewHotelRequest(userInput)) {
+         // Clear existing hotel content before showing new tabs
+         clearHotelContent();
+      }
+
       showTabsByKeyword(combinedText);
 
    }
@@ -338,4 +368,175 @@ document.addEventListener('DOMContentLoaded', () => {
       });
    });
 });
+
+// ========== HOTEL DISPLAY FUNCTIONS ==========
+
+function showHotelsTab() {
+   const hotelsTab = document.getElementById('hotels-tab');
+   if (hotelsTab) {
+      hotelsTab.style.display = 'block';
+
+      // Initialize tab if not already done
+      if (hotelsTab.getAttribute('data-initialized') !== 'true') {
+         initializeTabContent('hotels-tab', hotelsTab);
+      }
+   }
+}
+
+// Show AI processing state in hotel panel
+function showHotelProcessingState() {
+   const hotelsList = document.getElementById('hotelsList');
+   if (!hotelsList) return;
+
+   hotelsList.innerHTML = `
+      <div class="processing-state" style="text-align: center; padding: 40px 20px; color: #666;">
+         <div class="processing-spinner" style="margin-bottom: 15px;">
+            <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+         </div>
+         <p style="margin: 0; font-size: 14px; font-weight: 500;">🤖 AI is generating hotel descriptions...</p>
+         <p style="margin: 8px 0 0 0; font-size: 12px; color: #999;">Creating personalized descriptions for each hotel</p>
+         <p style="margin: 5px 0 0 0; font-size: 11px; color: #bbb;">This may take a few moments</p>
+      </div>
+      <style>
+         @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+         }
+      </style>
+   `;
+}
+
+function displayHotelResults(hotelData, destination) {
+   console.log('displayHotelResults called with:', hotelData, 'for destination:', destination);
+
+   // Hide loading and no results
+   const loadingState = document.getElementById('hotelLoadingState');
+   const noResults = document.getElementById('noHotelResults');
+   const mapContainer = document.getElementById('hotelMapContainer');
+   const detailPanel = document.getElementById('hotelDetailPanel');
+
+   if (loadingState) loadingState.style.display = 'none';
+   if (noResults) noResults.style.display = 'none';
+   if (detailPanel) detailPanel.style.display = 'none';
+
+   // Get hotels from the data
+   const hotels = hotelData.itineraries || [];
+   console.log('Hotels found:', hotels.length);
+
+   if (hotels.length === 0) {
+      console.log('No hotels found, showing no results');
+      if (noResults) noResults.style.display = 'block';
+      return;
+   }
+
+   // Show ONLY the map container with pins
+   if (mapContainer) {
+      mapContainer.style.display = 'block';
+      console.log('Map container shown');
+   }
+
+   // Add hotels to map
+   console.log('Adding hotels to map:', hotels);
+   addHotelsToMapFromChat(hotels);
+}
+
+function createHotelCard(hotel) {
+   const card = document.createElement('div');
+   card.className = 'hotel-card';
+
+   const rating = hotel.hotelRating || 0;
+   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+   card.innerHTML = `
+      <div class="hotel-header">
+         <h3 class="hotel-name">${hotel.hotelName || 'Hotel Name Not Available'}</h3>
+         <div class="hotel-rating">${stars} ${rating}/5</div>
+      </div>
+      <div class="hotel-address">
+         <i class="fas fa-map-marker-alt"></i> ${hotel.address || 'Address not available'}
+      </div>
+      ${hotel.ai_description ? `<div class="hotel-ai-description" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 14px; color: #555; font-style: italic;">
+         <i class="fas fa-robot" style="color: #007bff; margin-right: 5px;"></i>
+         ${hotel.ai_description}
+      </div>` : ''}
+      <div class="hotel-price">${hotel.currency || 'PHP'} ${hotel.total || '0'} per night</div>
+      <div class="hotel-fare-type">
+         <span class="fare-badge ${hotel.fareType === 'Refundable' ? 'refundable' : 'non-refundable'}">
+            ${hotel.fareType || 'Standard'}
+         </span>
+      </div>
+      ${hotel.thumbNailUrl ? `<img src="${hotel.thumbNailUrl}" alt="${hotel.hotelName}" class="hotel-image" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin: 10px 0;">` : ''}
+      <button class="book-btn" onclick="bookHotel('${hotel.hotelId}', '${hotel.hotelName}')">
+         <i class="fas fa-calendar-check"></i> Book Now
+      </button>
+   `;
+
+   return card;
+}
+
+function bookHotel(hotelId, hotelName) {
+   alert(`Booking ${hotelName} (ID: ${hotelId}). Booking functionality will be implemented soon!`);
+}
+
+// Add hotels to map from chat
+async function addHotelsToMapFromChat(hotels) {
+   if (!window.hotelMap) {
+      console.error('Hotel map instance not found');
+      return;
+   }
+
+   // Retry mechanism for map initialization
+   let retries = 3;
+   while (retries > 0) {
+      try {
+         await window.hotelMap.addHotelMarkers(hotels);
+         return; // Success, exit
+      } catch (error) {
+         console.warn(`Failed to add hotels to map (attempt ${4 - retries}):`, error);
+         retries--;
+
+         if (retries > 0) {
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+         } else {
+            console.error('Failed to add hotels to map after all retries');
+         }
+      }
+   }
+}
+
+// Check if user input is a new hotel request
+function isNewHotelRequest(userInput) {
+   const lowerInput = userInput.toLowerCase();
+   const hotelKeywords = ['hotel', 'hotels', 'accommodation', 'stay', 'lodge', 'resort', 'inn'];
+   const locationKeywords = ['in', 'at', 'near', 'around', 'palawan', 'davao', 'cebu', 'manila', 'boracay', 'baguio'];
+
+   const hasHotelKeyword = hotelKeywords.some(keyword => lowerInput.includes(keyword));
+   const hasLocationKeyword = locationKeywords.some(keyword => lowerInput.includes(keyword));
+
+   return hasHotelKeyword || (hasLocationKeyword && (lowerInput.includes('find') || lowerInput.includes('show') || lowerInput.includes('search')));
+}
+
+// Clear existing hotel content
+function clearHotelContent() {
+   const mapContainer = document.getElementById('hotelMapContainer');
+   const detailPanel = document.getElementById('hotelDetailPanel');
+   const loadingState = document.getElementById('hotelLoadingState');
+   const noResults = document.getElementById('noHotelResults');
+
+   // Hide all hotel content
+   if (mapContainer) mapContainer.style.display = 'none';
+   if (detailPanel) detailPanel.style.display = 'none';
+   if (loadingState) loadingState.style.display = 'none';
+   if (noResults) noResults.style.display = 'none';
+
+   // Clear map markers if map exists
+   if (window.hotelMap && window.hotelMap.clearMarkers) {
+      window.hotelMap.clearMarkers();
+   }
+
+   console.log('Hotel content cleared for new request');
+}
+
+
 

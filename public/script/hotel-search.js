@@ -217,22 +217,35 @@ class HotelSearch {
 
     showEmptyState() {
         this.hideAllStates();
-        const emptyState = document.getElementById('hotelEmptyState');
+        const emptyState = document.getElementById('noHotelResults');
+        const mapContainer = document.getElementById('hotelMapContainer');
+
         if (emptyState) {
             emptyState.style.display = 'block';
+        }
+
+        // Hide map when no results
+        if (mapContainer) {
+            mapContainer.style.display = 'none';
         }
 
         this.resetSearchButton();
     }
 
     hideAllStates() {
-        const states = ['hotelLoadingState', 'hotelSearchResults', 'hotelErrorState', 'hotelEmptyState'];
+        const states = ['hotelLoadingState', 'hotelResults', 'hotelErrorState', 'noHotelResults'];
         states.forEach(stateId => {
             const element = document.getElementById(stateId);
             if (element) {
                 element.style.display = 'none';
             }
         });
+
+        // Also hide map container by default
+        const mapContainer = document.getElementById('hotelMapContainer');
+        if (mapContainer) {
+            mapContainer.style.display = 'none';
+        }
     }
 
     resetSearchButton() {
@@ -247,9 +260,9 @@ class HotelSearch {
         this.hideAllStates();
         this.resetSearchButton();
 
-        const resultsContainer = document.getElementById('hotelSearchResults');
+        const resultsContainer = document.getElementById('hotelResults');
         const hotelsList = document.getElementById('hotelsList');
-        const resultsCount = document.getElementById('resultsCount');
+        const mapContainer = document.getElementById('hotelMapContainer');
 
         if (!resultsContainer || !hotelsList) {
             console.error('Results containers not found');
@@ -258,27 +271,31 @@ class HotelSearch {
 
         // Check if we have hotels data
         const hotels = data.hotels || data.itineraries || data.results || [];
-        
+
         if (!hotels || hotels.length === 0) {
             this.showEmptyState();
             return;
         }
 
-        // Update results count
-        if (resultsCount) {
-            resultsCount.textContent = `${hotels.length} hotel${hotels.length !== 1 ? 's' : ''} found`;
+        // Show map container
+        if (mapContainer) {
+            mapContainer.style.display = 'block';
         }
 
         // Clear previous results
         hotelsList.innerHTML = '';
 
-        // Display hotels
+        // Display hotels in list
         hotels.forEach(hotel => {
             const hotelCard = this.createHotelCard(hotel);
             hotelsList.appendChild(hotelCard);
         });
 
+        // Show results container
         resultsContainer.style.display = 'block';
+
+        // Add hotels to map
+        this.addHotelsToMap(hotels);
     }
 
     createHotelCard(hotel) {
@@ -403,6 +420,20 @@ class HotelSearch {
         if (params.rooms) {
             const roomsSelect = document.getElementById('rooms');
             if (roomsSelect) roomsSelect.value = params.rooms;
+        }
+    }
+
+    // Add hotels to map
+    async addHotelsToMap(hotels) {
+        if (!window.hotelMap) {
+            console.error('Hotel map instance not found');
+            return;
+        }
+
+        try {
+            await window.hotelMap.addHotelMarkers(hotels);
+        } catch (error) {
+            console.error('Failed to add hotels to map:', error);
         }
     }
 }
