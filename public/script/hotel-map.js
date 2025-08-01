@@ -1,478 +1,519 @@
 class HotelMap {
-    constructor() {
-        this.map = null;
-        this.markers = [];
-        this.infoWindow = null;
-        this.currentHotels = [];
-        this.isMapReady = false;
-        this.isGoogleMapsLoaded = false;
-        this.isInitializing = false;
-        this.defaultCenter = { lat: 14.5995, lng: 120.9842 };
-    }
+   constructor() {
+      this.map = null;
+      this.markers = [];
+      this.infoWindow = null;
+      this.currentHotels = [];
+      this.isMapReady = false;
+      this.isGoogleMapsLoaded = false;
+      this.isInitializing = false;
+      this.defaultCenter = { lat: 14.5995, lng: 120.9842 };
 
-    async init() {
-        if (this.isInitializing) return;
-        this.isInitializing = true;
+      this.setUserLocation();
 
-        try {
-            const mapContainer = document.getElementById('hotelMap');
-            if (!mapContainer) {
-                this.isInitializing = false;
-                return false;
-            }
+   }
 
-            if (!this.isGoogleMapsLoaded) {
-                await this.loadGoogleMapsAPI();
-            }
+   async setUserLocation() {
+      if (navigator.geolocation) {
+         navigator.geolocation.getCurrentPosition(
+            (position) => {
+               // Use geolocation data
+               this.defaultCenter = {
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude
+               };
+               this.initializeMap(); // You can delay map init until location is set
+            },
+            async (error) => {
+               console.warn("Geolocation failed or denied. Trying IP-based location...", error);
+               await this.setUserLocationFromIP();
+               this.initializeMap();
+            },
+            { timeout: 5000 } // Optional timeout
+         );
+      } else {
+         console.warn("Geolocation not supported. Falling back to IP.");
+         await this.setUserLocationFromIP();
+         this.initializeMap();
+      }
+   }
 
-            this.initializeMap();
-            return true;
-        } catch (error) {
-            console.error('Failed to initialize hotel map:', error);
+   async setUserLocationFromIP() {
+      try {
+         const response = await fetch("https://ipapi.co/json/");
+         const data = await response.json();
+         this.defaultCenter = {
+            lat: parseFloat(data.latitude),
+            lng: parseFloat(data.longitude)
+         };
+      } catch (err) {
+         console.warn("IP-based location failed. Using hardcoded default center.", err);
+      }
+   }
+
+   async init() {
+      if (this.isInitializing) return;
+      this.isInitializing = true;
+
+      try {
+         const mapContainer = document.getElementById('hotelMap');
+         if (!mapContainer) {
             this.isInitializing = false;
             return false;
-        }
-    }
+         }
 
-    loadGoogleMapsAPI() {
-        return new Promise((resolve, reject) => {
-            if (this.isGoogleMapsAvailable()) {
-                this.isGoogleMapsLoaded = true;
-                resolve();
-                return;
-            }
+         if (!this.isGoogleMapsLoaded) {
+            await this.loadGoogleMapsAPI();
+         }
 
-            if (window.googleMapsLoading) {
-                const checkLoaded = () => {
-                    if (this.isGoogleMapsAvailable()) {
-                        this.isGoogleMapsLoaded = true;
-                        resolve();
-                    } else if (window.googleMapsLoadError) {
-                        reject(new Error('Google Maps API failed to load'));
-                    } else {
-                        setTimeout(checkLoaded, 100);
-                    }
-                };
-                checkLoaded();
-                return;
-            }
+         this.initializeMap();
+         return true;
+      } catch (error) {
+         console.error('Failed to initialize hotel map:', error);
+         this.isInitializing = false;
+         return false;
+      }
+   }
 
-            window.googleMapsLoading = true;
-
-            const callbackName = 'initGoogleMapsCallback_' + Date.now();
-            window[callbackName] = () => {
-                console.log('Google Maps callback triggered');
-                setTimeout(() => {
-                    if (this.isGoogleMapsAvailable()) {
-                        this.isGoogleMapsLoaded = true;
-                        window.googleMapsLoading = false;
-                        console.log('Google Maps API loaded and ready');
-                        resolve();
-                    } else {
-                        window.googleMapsLoadError = true;
-                        window.googleMapsLoading = false;
-                        console.error('Google Maps API loaded but objects not available');
-                        reject(new Error('Google Maps API objects not available'));
-                    }
-                }, 200);
-            };
-
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&libraries=geometry&loading=async&callback=${callbackName}`;
-            script.async = true;
-            script.defer = true;
-
-            script.onerror = () => {
-                window.googleMapsLoadError = true;
-                window.googleMapsLoading = false;
-                console.error('Failed to load Google Maps API script');
-                reject(new Error('Failed to load Google Maps API script'));
-            };
-
-            document.head.appendChild(script);
-        });
-    }
-
-    initializeMap() {
-        const mapContainer = document.getElementById('hotelMap');
-        if (!mapContainer) {
-            console.warn('Hotel map container not found during initialization');
-            this.isInitializing = false;
+   loadGoogleMapsAPI() {
+      return new Promise((resolve, reject) => {
+         if (this.isGoogleMapsAvailable()) {
+            this.isGoogleMapsLoaded = true;
+            resolve();
             return;
-        }
+         }
 
-        if (typeof google === 'undefined' || !google.maps || !google.maps.Map || !google.maps.MapTypeId) {
-            console.error('Google Maps API not fully loaded');
-            this.isInitializing = false;
-            throw new Error('Google Maps API not fully loaded');
-        }
-
-        this.map = new google.maps.Map(mapContainer, {
-            zoom: 6,
-            center: this.defaultCenter,
-            mapTypeId: google.maps.MapTypeId.ROADMAP,
-            disableDefaultUI: true,
-            gestureHandling: 'cooperative',
-            clickableIcons: false,
-            keyboardShortcuts: false,
-            backgroundColor: '#ffffff',
-            styles: [
-               {
-                 "featureType": "administrative.land_parcel",
-                 "elementType": "labels",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "landscape.natural",
-                 "elementType": "geometry.fill",
-                 "stylers": [
-                   {
-                     "color": "#c7e8d0"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "landscape.natural.terrain",
-                 "elementType": "geometry.fill",
-                 "stylers": [
-                   {
-                     "color": "#b2d6a3"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "poi",
-                 "elementType": "labels.text",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "poi",
-                 "elementType": "labels.text.fill",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "poi.business",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "poi.business",
-                 "elementType": "labels.text",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "poi.park",
-                 "elementType": "labels.text.fill",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road",
-                 "elementType": "labels.icon",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.arterial",
-                 "elementType": "labels",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.arterial",
-                 "elementType": "labels.icon",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.highway",
-                 "elementType": "geometry.fill",
-                 "stylers": [
-                   {
-                     "color": "#ffffff"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.highway",
-                 "elementType": "geometry.stroke",
-                 "stylers": [
-                   {
-                     "color": "#dcdcdc"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.highway",
-                 "elementType": "labels",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.highway",
-                 "elementType": "labels.icon",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.local",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.local",
-                 "elementType": "labels",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "road.local",
-                 "elementType": "labels.icon",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "transit",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "transit",
-                 "elementType": "labels.text",
-                 "stylers": [
-                   {
-                     "visibility": "off"
-                   }
-                 ]
-               },
-               {
-                 "featureType": "water",
-                 "elementType": "geometry.fill",
-                 "stylers": [
-                   {
-                     "color": "#c9e5f5"
-                   }
-                 ]
+         if (window.googleMapsLoading) {
+            const checkLoaded = () => {
+               if (this.isGoogleMapsAvailable()) {
+                  this.isGoogleMapsLoaded = true;
+                  resolve();
+               } else if (window.googleMapsLoadError) {
+                  reject(new Error('Google Maps API failed to load'));
+               } else {
+                  setTimeout(checkLoaded, 100);
                }
-             ]
-        });
-
-        this.infoWindow = new google.maps.InfoWindow();
-
-        this.isMapReady = true;
-        this.isInitializing = false;
-        console.log('Hotel map initialized successfully');
-
-        document.dispatchEvent(new CustomEvent('hotelMapReady'));
-    }
-
-    async addHotelMarkers(hotels) {
-        if (!hotels || hotels.length === 0) {
+            };
+            checkLoaded();
             return;
-        }
+         }
 
-        if (!this.isMapReady) {
-            try {
-                const initialized = await this.init();
-                if (!initialized) {
-                    console.error('Failed to initialize map for hotel markers');
-                    return;
-                }
-            } catch (error) {
-                console.error('Error initializing map:', error);
-                return;
+         window.googleMapsLoading = true;
+
+         const callbackName = 'initGoogleMapsCallback_' + Date.now();
+         window[callbackName] = () => {
+            console.log('Google Maps callback triggered');
+            setTimeout(() => {
+               if (this.isGoogleMapsAvailable()) {
+                  this.isGoogleMapsLoaded = true;
+                  window.googleMapsLoading = false;
+                  console.log('Google Maps API loaded and ready');
+                  resolve();
+               } else {
+                  window.googleMapsLoadError = true;
+                  window.googleMapsLoading = false;
+                  console.error('Google Maps API loaded but objects not available');
+                  reject(new Error('Google Maps API objects not available'));
+               }
+            }, 200);
+         };
+
+         const script = document.createElement('script');
+         script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&libraries=geometry&loading=async&callback=${callbackName}`;
+         script.async = true;
+         script.defer = true;
+
+         script.onerror = () => {
+            window.googleMapsLoadError = true;
+            window.googleMapsLoading = false;
+            console.error('Failed to load Google Maps API script');
+            reject(new Error('Failed to load Google Maps API script'));
+         };
+
+         document.head.appendChild(script);
+      });
+   }
+
+   initializeMap() {
+      const mapContainer = document.getElementById('hotelMap');
+      if (!mapContainer) {
+         console.warn('Hotel map container not found during initialization');
+         this.isInitializing = false;
+         return;
+      }
+
+      if (typeof google === 'undefined' || !google.maps || !google.maps.Map || !google.maps.MapTypeId) {
+         console.error('Google Maps API not fully loaded');
+         this.isInitializing = false;
+         throw new Error('Google Maps API not fully loaded');
+      }
+
+      this.map = new google.maps.Map(mapContainer, {
+         zoom: 6,
+         center: this.defaultCenter,
+         mapTypeId: google.maps.MapTypeId.ROADMAP,
+         disableDefaultUI: true,
+         gestureHandling: 'cooperative',
+         clickableIcons: false,
+         keyboardShortcuts: false,
+         backgroundColor: '#ffffff',
+         styles: [
+            {
+               "featureType": "administrative.land_parcel",
+               "elementType": "labels",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "landscape.natural",
+               "elementType": "geometry.fill",
+               "stylers": [
+                  {
+                     "color": "#c7e8d0"
+                  }
+               ]
+            },
+            {
+               "featureType": "landscape.natural.terrain",
+               "elementType": "geometry.fill",
+               "stylers": [
+                  {
+                     "color": "#b2d6a3"
+                  }
+               ]
+            },
+            {
+               "featureType": "poi",
+               "elementType": "labels.text",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "poi",
+               "elementType": "labels.text.fill",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "poi.business",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "poi.business",
+               "elementType": "labels.text",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "poi.park",
+               "elementType": "labels.text.fill",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road",
+               "elementType": "labels.icon",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.arterial",
+               "elementType": "labels",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.arterial",
+               "elementType": "labels.icon",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.highway",
+               "elementType": "geometry.fill",
+               "stylers": [
+                  {
+                     "color": "#ffffff"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.highway",
+               "elementType": "geometry.stroke",
+               "stylers": [
+                  {
+                     "color": "#dcdcdc"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.highway",
+               "elementType": "labels",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.highway",
+               "elementType": "labels.icon",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.local",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.local",
+               "elementType": "labels",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "road.local",
+               "elementType": "labels.icon",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "transit",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "transit",
+               "elementType": "labels.text",
+               "stylers": [
+                  {
+                     "visibility": "off"
+                  }
+               ]
+            },
+            {
+               "featureType": "water",
+               "elementType": "geometry.fill",
+               "stylers": [
+                  {
+                     "color": "#c9e5f5"
+                  }
+               ]
             }
-        }
+         ]
+      });
 
-        this.clearMarkers();
-        
-        this.currentHotels = hotels;
-        const bounds = new google.maps.LatLngBounds();
+      this.infoWindow = new google.maps.InfoWindow();
 
-        // Process all hotels and wait for all markers to be created
-        const markerPromises = hotels.map(async (hotel, index) => {
-            const lat = parseFloat(hotel.latitude);
-            const lng = parseFloat(hotel.longitude);
+      this.isMapReady = true;
+      this.isInitializing = false;
+      console.log('Hotel map initialized successfully');
 
-            if (isNaN(lat) || isNaN(lng)) {
-                console.warn('Invalid coordinates for hotel:', hotel.hotelName);
-                return null;
+      document.dispatchEvent(new CustomEvent('hotelMapReady'));
+   }
+
+   async addHotelMarkers(hotels) {
+      if (!hotels || hotels.length === 0) {
+         return;
+      }
+
+      if (!this.isMapReady) {
+         try {
+            const initialized = await this.init();
+            if (!initialized) {
+               console.error('Failed to initialize map for hotel markers');
+               return;
             }
+         } catch (error) {
+            console.error('Error initializing map:', error);
+            return;
+         }
+      }
 
-            const position = { lat, lng };
+      this.clearMarkers();
 
-            // Create the icon with background
-            const iconUrl = await this.createHotelIconWithBackground();
+      this.currentHotels = hotels;
+      const bounds = new google.maps.LatLngBounds();
 
-            const marker = new google.maps.Marker({
-                position: position,
-                map: this.map,
-                title: hotel.hotelName,
-                icon: {
-                    url: iconUrl,
-                    scaledSize: new google.maps.Size(32, 32),
-                    anchor: new google.maps.Point(16, 32),
-                    labelOrigin: new google.maps.Point(16, -10)
-                },
-                label: {
-                    text: hotel.hotelName,
-                    color: '#000',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    className: 'hotel-marker-label'
-                },
-                zIndex: 1000 - index
-            });
+      // Process all hotels and wait for all markers to be created
+      const markerPromises = hotels.map(async (hotel, index) => {
+         const lat = parseFloat(hotel.latitude);
+         const lng = parseFloat(hotel.longitude);
 
-            marker.addListener('click', () => {
-                this.showHotelDetails(hotel, marker);
-            });
+         if (isNaN(lat) || isNaN(lng)) {
+            console.warn('Invalid coordinates for hotel:', hotel.hotelName);
+            return null;
+         }
 
-            this.markers.push(marker);
-            bounds.extend(position);
+         const position = { lat, lng };
 
-            return marker;
-        });
+         // Create the icon with background
+         const iconUrl = await this.createHotelIconWithBackground();
 
-        // Wait for all markers to be created, then fit bounds
-        await Promise.all(markerPromises);
+         const marker = new google.maps.Marker({
+            position: position,
+            map: this.map,
+            title: hotel.hotelName,
+            icon: {
+               url: iconUrl,
+               scaledSize: new google.maps.Size(32, 32),
+               anchor: new google.maps.Point(16, 32),
+               labelOrigin: new google.maps.Point(16, -10)
+            },
+            label: {
+               text: hotel.hotelName,
+               color: '#000',
+               fontSize: '13px',
+               fontWeight: '600',
+               className: 'hotel-marker-label'
+            },
+            zIndex: 1000 - index
+         });
 
-        if (this.markers.length > 0) {
-            this.map.fitBounds(bounds);
+         marker.addListener('click', () => {
+            this.showHotelDetails(hotel, marker);
+         });
 
-            google.maps.event.addListenerOnce(this.map, 'bounds_changed', () => {
-                if (this.map.getZoom() > 15) {
-                    this.map.setZoom(15);
-                }
-            });
-        }
-    }
+         this.markers.push(marker);
+         bounds.extend(position);
 
-    async createHotelIconWithBackground() {
-        return new Promise((resolve) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 56;
-            canvas.height = 56;
-            const ctx = canvas.getContext('2d');
+         return marker;
+      });
 
-            // Draw white circular background
-            ctx.beginPath();
-            ctx.arc(28, 28, 28, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-            ctx.strokeStyle = '#ddd';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+      // Wait for all markers to be created, then fit bounds
+      await Promise.all(markerPromises);
 
-            // Add shadow effect to the circle
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-            ctx.shadowBlur = 4;
+      if (this.markers.length > 0) {
+         this.map.fitBounds(bounds);
+
+         google.maps.event.addListenerOnce(this.map, 'bounds_changed', () => {
+            if (this.map.getZoom() > 15) {
+               this.map.setZoom(15);
+            }
+         });
+      }
+   }
+
+   async createHotelIconWithBackground() {
+      return new Promise((resolve) => {
+         const canvas = document.createElement('canvas');
+         canvas.width = 56;
+         canvas.height = 56;
+         const ctx = canvas.getContext('2d');
+
+         // Draw white circular background
+         ctx.beginPath();
+         ctx.arc(28, 28, 28, 0, 2 * Math.PI);
+         ctx.fillStyle = '#ffffff';
+         ctx.fill();
+         ctx.strokeStyle = '#ddd';
+         ctx.lineWidth = 1;
+         ctx.stroke();
+
+         // Add shadow effect to the circle
+         ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+         ctx.shadowBlur = 4;
+         ctx.shadowOffsetX = 0;
+         ctx.shadowOffsetY = 2;
+
+         // Redraw the circle with shadow
+         ctx.beginPath();
+         ctx.arc(28, 28, 28, 0, 2 * Math.PI);
+         ctx.fillStyle = '#ffffff';
+         ctx.fill();
+
+         // Create and load the hotel bed icon
+         const img = new Image();
+         img.onload = () => {
+            // Clear shadow for the icon
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 2;
+            ctx.shadowOffsetY = 0;
 
-            // Redraw the circle with shadow
-            ctx.beginPath();
-            ctx.arc(28, 28, 28, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
+            // Draw the hotel bed icon in the center (32x32 icon with 12px padding)
+            ctx.drawImage(img, 12, 12, 32, 32);
+            resolve(canvas.toDataURL());
+         };
 
-            // Create and load the hotel bed icon
-            const img = new Image();
-            img.onload = () => {
-                // Clear shadow for the icon
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
+         img.onerror = () => {
+            // If image fails to load, just return the white circle
+            resolve(canvas.toDataURL());
+         };
 
-                // Draw the hotel bed icon in the center (32x32 icon with 12px padding)
-                ctx.drawImage(img, 12, 12, 32, 32);
-                resolve(canvas.toDataURL());
-            };
+         img.src = 'icon/hotel_bed_icon.png';
+      });
+   }
 
-            img.onerror = () => {
-                // If image fails to load, just return the white circle
-                resolve(canvas.toDataURL());
-            };
+   showHotelDetails(hotel, marker) {
+      const content = this.createInfoWindowContent(hotel);
 
-            img.src = 'icon/hotel_bed_icon.png';
-        });
-    }
+      this.infoWindow.setContent(content);
+      this.infoWindow.open(this.map, marker);
 
-    showHotelDetails(hotel, marker) {
-        const content = this.createInfoWindowContent(hotel);
+      setTimeout(() => {
+         const viewDetailsBtn = document.getElementById(`viewDetails_${hotel.hotelId}`);
+         if (viewDetailsBtn) {
+            viewDetailsBtn.addEventListener('click', () => {
+               this.showDetailedHotelView(hotel);
+            });
+         }
+      }, 100);
+   }
 
-        this.infoWindow.setContent(content);
-        this.infoWindow.open(this.map, marker);
+   createInfoWindowContent(hotel) {
+      const rating = hotel.hotelRating || 0;
+      const stars = this.generateStarRating(rating);
+      const price = hotel.total || 0;
+      const currency = hotel.currency || 'PHP';
 
-        setTimeout(() => {
-            const viewDetailsBtn = document.getElementById(`viewDetails_${hotel.hotelId}`);
-            if (viewDetailsBtn) {
-                viewDetailsBtn.addEventListener('click', () => {
-                    this.showDetailedHotelView(hotel);
-                });
-            }
-        }, 100);
-    }
+      const hotelImage = this.getHotelImage(hotel);
 
-    createInfoWindowContent(hotel) {
-        const rating = hotel.hotelRating || 0;
-        const stars = this.generateStarRating(rating);
-        const price = hotel.total || 0;
-        const currency = hotel.currency || 'PHP';
-
-        const hotelImage = this.getHotelImage(hotel);
-
-        return `
+      return `
             <div class="hotel-info-window">
                 <div class="hotel-info-image">
                     <img src="${hotelImage}" alt="${this.escapeHtml(hotel.hotelName)}" class="hotel-preview-img">
@@ -493,107 +534,107 @@ class HotelMap {
                 </button>
             </div>
         `;
-    }
+   }
 
-    showDetailedHotelView(hotel) {
-        this.infoWindow.close();
+   showDetailedHotelView(hotel) {
+      this.infoWindow.close();
 
-        const mapContainer = document.getElementById('hotelMapContainer');
-        const detailPanel = document.getElementById('hotelDetailPanel');
+      const mapContainer = document.getElementById('hotelMapContainer');
+      const detailPanel = document.getElementById('hotelDetailPanel');
 
-        if (mapContainer) mapContainer.style.display = 'none';
-        if (detailPanel) {
-            detailPanel.style.display = 'block';
-            this.populateHotelDetailPanel(hotel);
-        }
-    }
+      if (mapContainer) mapContainer.style.display = 'none';
+      if (detailPanel) {
+         detailPanel.style.display = 'block';
+         this.populateHotelDetailPanel(hotel);
+      }
+   }
 
-    generateStarRating(rating) {
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 >= 0.5;
-        let stars = '';
+   generateStarRating(rating) {
+      const fullStars = Math.floor(rating);
+      const hasHalfStar = rating % 1 >= 0.5;
+      let stars = '';
 
-        for (let i = 0; i < fullStars; i++) {
-            stars += '<i class="fas fa-star"></i>';
-        }
+      for (let i = 0; i < fullStars; i++) {
+         stars += '<i class="fas fa-star"></i>';
+      }
 
-        if (hasHalfStar) {
-            stars += '<i class="fas fa-star-half-alt"></i>';
-        }
+      if (hasHalfStar) {
+         stars += '<i class="fas fa-star-half-alt"></i>';
+      }
 
-        const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-        for (let i = 0; i < emptyStars; i++) {
-            stars += '<i class="far fa-star"></i>';
-        }
+      const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+      for (let i = 0; i < emptyStars; i++) {
+         stars += '<i class="far fa-star"></i>';
+      }
 
-        return stars;
-    }
+      return stars;
+   }
 
-    clearMarkers() {
-        this.markers.forEach(marker => {
-            marker.setMap(null);
-        });
-        this.markers = [];
-    }
+   clearMarkers() {
+      this.markers.forEach(marker => {
+         marker.setMap(null);
+      });
+      this.markers = [];
+   }
 
-    getHotelImage(hotel) {
-        const baseUrl = 'https://images.unsplash.com/';
-        const hotelImages = [
-            `${baseUrl}photo-1566073771259-6a8506099945?w=250&h=150&fit=crop`,
-            `${baseUrl}photo-1631049307264-da0ec9d70304?w=250&h=150&fit=crop`,
-            `${baseUrl}photo-1582719478250-c89cae4dc85b?w=250&h=150&fit=crop`,
-            `${baseUrl}photo-1571896349842-33c89424de2d?w=250&h=150&fit=crop`
-        ];
+   getHotelImage(hotel) {
+      const baseUrl = 'https://images.unsplash.com/';
+      const hotelImages = [
+         `${baseUrl}photo-1566073771259-6a8506099945?w=250&h=150&fit=crop`,
+         `${baseUrl}photo-1631049307264-da0ec9d70304?w=250&h=150&fit=crop`,
+         `${baseUrl}photo-1582719478250-c89cae4dc85b?w=250&h=150&fit=crop`,
+         `${baseUrl}photo-1571896349842-33c89424de2d?w=250&h=150&fit=crop`
+      ];
 
-        const imageIndex = hotel.hotelId ? parseInt(hotel.hotelId.slice(-1)) % hotelImages.length : 0;
-        return hotelImages[imageIndex];
-    }
+      const imageIndex = hotel.hotelId ? parseInt(hotel.hotelId.slice(-1)) % hotelImages.length : 0;
+      return hotelImages[imageIndex];
+   }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+   escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+   }
 
-    centerOnLocation(lat, lng, zoom = 12) {
-        if (this.isMapReady) {
-            this.map.setCenter({ lat, lng });
-            this.map.setZoom(zoom);
-        }
-    }
+   centerOnLocation(lat, lng, zoom = 12) {
+      if (this.isMapReady) {
+         this.map.setCenter({ lat, lng });
+         this.map.setZoom(zoom);
+      }
+   }
 
-    getMap() {
-        return this.map;
-    }
+   getMap() {
+      return this.map;
+   }
 
-    isReady() {
-        return this.isMapReady;
-    }
+   isReady() {
+      return this.isMapReady;
+   }
 
-    isGoogleMapsAvailable() {
-        return typeof google !== 'undefined' &&
-               google.maps &&
-               google.maps.Map &&
-               google.maps.MapTypeId &&
-               google.maps.Marker;
-    }
+   isGoogleMapsAvailable() {
+      return typeof google !== 'undefined' &&
+         google.maps &&
+         google.maps.Map &&
+         google.maps.MapTypeId &&
+         google.maps.Marker;
+   }
 
-    populateHotelDetailPanel(hotel) {
-        const detailContent = document.getElementById('hotelDetailContent');
-        if (!detailContent) return;
+   populateHotelDetailPanel(hotel) {
+      const detailContent = document.getElementById('hotelDetailContent');
+      if (!detailContent) return;
 
-        const rating = hotel.hotelRating || 0;
-        const stars = this.generateStarRating(rating);
-        const price = hotel.total || 0;
-        const currency = hotel.currency || 'PHP';
-        const address = hotel.address || 'Address not available';
-        const city = hotel.city || '';
-        const locality = hotel.locality || '';
+      const rating = hotel.hotelRating || 0;
+      const stars = this.generateStarRating(rating);
+      const price = hotel.total || 0;
+      const currency = hotel.currency || 'PHP';
+      const address = hotel.address || 'Address not available';
+      const city = hotel.city || '';
+      const locality = hotel.locality || '';
 
-        const sampleImages = this.generateSampleImages(hotel);
-        const overview = this.generateHotelOverview(hotel);
+      const sampleImages = this.generateSampleImages(hotel);
+      const overview = this.generateHotelOverview(hotel);
 
-        detailContent.innerHTML = `
+      detailContent.innerHTML = `
             <div class="hotel-detail-grid">
                 <!-- Hotel Images -->
                 <div class="hotel-images">
@@ -602,8 +643,8 @@ class HotelMap {
                     </div>
                     <div class="thumbnail-images">
                         ${sampleImages.slice(1, 4).map(img =>
-                            `<img src="${img}" alt="Hotel view" class="hotel-thumb" onclick="hotelMap.changeMainImage('${img}')">`
-                        ).join('')}
+         `<img src="${img}" alt="Hotel view" class="hotel-thumb" onclick="hotelMap.changeMainImage('${img}')">`
+      ).join('')}
                     </div>
                 </div>
 
@@ -714,112 +755,112 @@ class HotelMap {
             </div>
         `;
 
-        this.setDefaultDates();
-        this.bindBackToMapButton();
-    }
+      this.setDefaultDates();
+      this.bindBackToMapButton();
+   }
 
-    generateSampleImages(hotel) {
-        const baseUrl = 'https://images.unsplash.com/';
-        const hotelImages = [
-            `${baseUrl}photo-1566073771259-6a8506099945?w=600&h=400&fit=crop`,
-            `${baseUrl}photo-1631049307264-da0ec9d70304?w=300&h=200&fit=crop`,
-            `${baseUrl}photo-1582719478250-c89cae4dc85b?w=300&h=200&fit=crop`,
-            `${baseUrl}photo-1571896349842-33c89424de2d?w=300&h=200&fit=crop`
-        ];
-        return hotelImages;
-    }
+   generateSampleImages(hotel) {
+      const baseUrl = 'https://images.unsplash.com/';
+      const hotelImages = [
+         `${baseUrl}photo-1566073771259-6a8506099945?w=600&h=400&fit=crop`,
+         `${baseUrl}photo-1631049307264-da0ec9d70304?w=300&h=200&fit=crop`,
+         `${baseUrl}photo-1582719478250-c89cae4dc85b?w=300&h=200&fit=crop`,
+         `${baseUrl}photo-1571896349842-33c89424de2d?w=300&h=200&fit=crop`
+      ];
+      return hotelImages;
+   }
 
-    generateHotelOverview(hotel) {
-        const city = hotel.city || 'the Philippines';
-        const rating = hotel.hotelRating || 3;
+   generateHotelOverview(hotel) {
+      const city = hotel.city || 'the Philippines';
+      const rating = hotel.hotelRating || 3;
 
-        let overview = `Experience comfort and hospitality at ${hotel.hotelName}, `;
+      let overview = `Experience comfort and hospitality at ${hotel.hotelName}, `;
 
-        if (rating >= 4) {
-            overview += `a premium ${rating}-star hotel located in the heart of ${city}. `;
-        } else if (rating >= 3) {
-            overview += `a comfortable ${rating}-star accommodation in ${city}. `;
-        } else {
-            overview += `a budget-friendly option in ${city}. `;
-        }
+      if (rating >= 4) {
+         overview += `a premium ${rating}-star hotel located in the heart of ${city}. `;
+      } else if (rating >= 3) {
+         overview += `a comfortable ${rating}-star accommodation in ${city}. `;
+      } else {
+         overview += `a budget-friendly option in ${city}. `;
+      }
 
-        overview += `This hotel offers modern amenities and convenient access to local attractions, `;
-        overview += `making it an ideal choice for both business and leisure travelers. `;
-        overview += `Enjoy well-appointed rooms, friendly service, and a memorable stay in this beautiful destination.`;
+      overview += `This hotel offers modern amenities and convenient access to local attractions, `;
+      overview += `making it an ideal choice for both business and leisure travelers. `;
+      overview += `Enjoy well-appointed rooms, friendly service, and a memorable stay in this beautiful destination.`;
 
-        return overview;
-    }
+      return overview;
+   }
 
-    setDefaultDates() {
-        const checkinInput = document.getElementById('checkinDate');
-        const checkoutInput = document.getElementById('checkoutDate');
+   setDefaultDates() {
+      const checkinInput = document.getElementById('checkinDate');
+      const checkoutInput = document.getElementById('checkoutDate');
 
-        if (checkinInput && checkoutInput) {
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+      if (checkinInput && checkoutInput) {
+         const today = new Date();
+         const tomorrow = new Date(today);
+         tomorrow.setDate(tomorrow.getDate() + 1);
 
-            checkinInput.value = today.toISOString().split('T')[0];
-            checkoutInput.value = tomorrow.toISOString().split('T')[0];
+         checkinInput.value = today.toISOString().split('T')[0];
+         checkoutInput.value = tomorrow.toISOString().split('T')[0];
 
-            checkinInput.min = today.toISOString().split('T')[0];
-            checkoutInput.min = tomorrow.toISOString().split('T')[0];
+         checkinInput.min = today.toISOString().split('T')[0];
+         checkoutInput.min = tomorrow.toISOString().split('T')[0];
 
-            checkinInput.addEventListener('change', () => {
-                const checkinDate = new Date(checkinInput.value);
-                const nextDay = new Date(checkinDate);
-                nextDay.setDate(nextDay.getDate() + 1);
-                checkoutInput.min = nextDay.toISOString().split('T')[0];
+         checkinInput.addEventListener('change', () => {
+            const checkinDate = new Date(checkinInput.value);
+            const nextDay = new Date(checkinDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            checkoutInput.min = nextDay.toISOString().split('T')[0];
 
-                if (checkoutInput.value <= checkinInput.value) {
-                    checkoutInput.value = nextDay.toISOString().split('T')[0];
-                }
-            });
-        }
-    }
+            if (checkoutInput.value <= checkinInput.value) {
+               checkoutInput.value = nextDay.toISOString().split('T')[0];
+            }
+         });
+      }
+   }
 
-    bindBackToMapButton() {
-        const backBtn = document.getElementById('backToMapBtn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                this.showMapView();
-            });
-        }
-    }
+   bindBackToMapButton() {
+      const backBtn = document.getElementById('backToMapBtn');
+      if (backBtn) {
+         backBtn.addEventListener('click', () => {
+            this.showMapView();
+         });
+      }
+   }
 
-    showMapView() {
-        const mapContainer = document.getElementById('hotelMapContainer');
-        const detailPanel = document.getElementById('hotelDetailPanel');
+   showMapView() {
+      const mapContainer = document.getElementById('hotelMapContainer');
+      const detailPanel = document.getElementById('hotelDetailPanel');
 
-        if (detailPanel) detailPanel.style.display = 'none';
-        if (mapContainer) mapContainer.style.display = 'block';
-    }
+      if (detailPanel) detailPanel.style.display = 'none';
+      if (mapContainer) mapContainer.style.display = 'block';
+   }
 
-    changeMainImage(imageSrc) {
-        const mainImg = document.querySelector('.hotel-main-img');
-        if (mainImg) {
-            mainImg.src = imageSrc;
-        }
-    }
+   changeMainImage(imageSrc) {
+      const mainImg = document.querySelector('.hotel-main-img');
+      if (mainImg) {
+         mainImg.src = imageSrc;
+      }
+   }
 
-    bookHotel(hotelId, hotelName) {
-        const checkinDate = document.getElementById('checkinDate')?.value;
-        const checkoutDate = document.getElementById('checkoutDate')?.value;
-        const adults = document.getElementById('adults')?.value;
-        const children = document.getElementById('children')?.value;
+   bookHotel(hotelId, hotelName) {
+      const checkinDate = document.getElementById('checkinDate')?.value;
+      const checkoutDate = document.getElementById('checkoutDate')?.value;
+      const adults = document.getElementById('adults')?.value;
+      const children = document.getElementById('children')?.value;
 
-        alert(`Booking ${hotelName}\nCheck-in: ${checkinDate}\nCheck-out: ${checkoutDate}\nGuests: ${adults} adults, ${children} children`);
-    }
+      alert(`Booking ${hotelName}\nCheck-in: ${checkinDate}\nCheck-out: ${checkoutDate}\nGuests: ${adults} adults, ${children} children`);
+   }
 
-    addToFavorites(hotelId, hotelName) {
-        alert(`${hotelName} added to favorites!`);
-    }
+   addToFavorites(hotelId, hotelName) {
+      alert(`${hotelName} added to favorites!`);
+   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.hotelMap = new HotelMap();
+   window.hotelMap = new HotelMap();
 });
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = HotelMap;
+   module.exports = HotelMap;
 }

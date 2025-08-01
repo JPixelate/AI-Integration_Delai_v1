@@ -432,8 +432,8 @@ header h3 {
 
 .close-chat-btn {
   position: absolute;
-  top: -12px;
-  right: -12px;
+  top: 12px;
+  right: 12px;
   border: none;
   padding: 0;
   background: none;
@@ -444,7 +444,7 @@ header h3 {
   padding: 12px;
   border-radius: 50%;
   z-index: 999;
-  background: #ffffff;
+  background: #ffffffb4;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 

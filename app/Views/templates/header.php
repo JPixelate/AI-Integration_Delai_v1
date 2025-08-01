@@ -52,7 +52,7 @@
 <div class="aspect-ratio-wrapper" style="display:none;">
 
    <button id="closeChatBtn" class="close-chat-btn">
-      <img src="<?=base_url('icon/exit.png')?>" alt="Close Panel" width="16">
+      <img src="<?=base_url('icon/exit.png')?>" alt="Close Panel" width="12">
    </button>
 
    <div class="split-screen">
