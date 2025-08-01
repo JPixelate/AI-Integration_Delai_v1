@@ -16,6 +16,7 @@
 
   <link rel="stylesheet" href="<?= base_url('css/header.css') ?>">
   <link rel="stylesheet" href="<?= base_url('css/home.css') ?>">
+  <link rel="stylesheet" href="<?= base_url('css/hotel-map.css') ?>">
 </head>
 <body>
 

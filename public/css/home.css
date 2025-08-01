@@ -146,20 +146,7 @@
    font-size: small;
 }
 
-/* Hotel Map Integration Styles */
-.hotel-map-container {
-   margin: 20px 0;
-   border-radius: 12px;
-   overflow: hidden;
-   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-   background: white;
-}
-
-.hotel-map {
-   width: 100%;
-   height: 350px;
-   border: none;
-}
+/* Hotel Map Integration Styles - Moved to hotel-map.css */
 
 /* Info Window Custom Styles */
 .gm-style .gm-style-iw-c {
@@ -216,13 +203,4 @@
    animation: spin 1s linear infinite;
 }
 
-/* Responsive map adjustments */
-@media (max-width: 768px) {
-   .hotel-map {
-      height: 250px;
-   }
-
-   .hotel-map-container {
-      margin: 15px 0;
-   }
-}
+/* Responsive map adjustments - Moved to hotel-map.css */

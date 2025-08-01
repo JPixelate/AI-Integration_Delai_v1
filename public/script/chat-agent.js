@@ -172,32 +172,167 @@ document.addEventListener('DOMContentLoaded', () => {
       chatBody.appendChild(bubble);
       chatBody.scrollTop = chatBody.scrollHeight;
 
-      let index = 0;
-      const speed = 4; // Typing speed per character
-      let plainText = '';
+      // 🟢 STEP 1: Pre-format the complete response with proper HTML structure
+      let formattedHTML;
+      try {
+         // Clean and process the text first
+         let processedText = text;
 
-      function typeChar() {
-         if (index < text.length) {
-            plainText += text.charAt(index);
-            contentDiv.innerText = plainText; // Type as plain text
-            index++;
-            chatBody.scrollTop = chatBody.scrollHeight;
-            setTimeout(typeChar, speed);
-         } else {
-            // 🟢 Render as Markdown after typing finishes - PRESERVE LINE BREAKS!
-            try {
-               // Convert newlines to proper line breaks for hotel lists
-               const textWithBreaks = text.replace(/\n/g, '<br>');
-               contentDiv.innerHTML = marked.parse(textWithBreaks);
-            } catch {
-               // Fallback: convert newlines to <br> tags
-               const textWithBreaks = text.replace(/\n/g, '<br>');
-               contentDiv.innerHTML = textWithBreaks;
+         // Remove markdown headers and replace with clean text
+         processedText = processedText.replace(/^#{1,6}\s+(.+)$/gm, '$1');
+
+         // AGGRESSIVELY remove ALL dashes, bullets, and symbols from line starts
+         processedText = processedText.replace(/^[-•*]\s+(.+)$/gm, '$1');
+         processedText = processedText.replace(/^[\s]*[-•*]\s+(.+)$/gm, '$1');
+         processedText = processedText.replace(/^[\s]*-\s+(.+)$/gm, '$1');
+
+         // Convert newlines to proper line breaks
+         const textWithBreaks = processedText.replace(/\n/g, '<br>');
+         formattedHTML = marked.parse(textWithBreaks);
+
+         // Create a temporary div to process the HTML
+         const tempDiv = document.createElement('div');
+         tempDiv.innerHTML = formattedHTML;
+
+         // Remove list markers and clean up formatting
+         const lists = tempDiv.querySelectorAll('ul, ol');
+         lists.forEach(list => {
+            list.style.listStyleType = 'none';
+            list.style.paddingLeft = '0';
+         });
+
+         // AGGRESSIVELY remove any remaining dashes from list items and paragraphs
+         const allTextElements = tempDiv.querySelectorAll('li, p, div');
+         allTextElements.forEach(element => {
+            if (element.textContent) {
+               // Remove dashes at the start of text content
+               element.innerHTML = element.innerHTML.replace(/^[\s]*-\s+/, '');
+               element.innerHTML = element.innerHTML.replace(/^[\s]*•\s+/, '');
+               element.innerHTML = element.innerHTML.replace(/^[\s]*\*\s+/, '');
             }
+         });
+
+         // Remove any remaining ### headers
+         const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+         headings.forEach(heading => {
+            const p = document.createElement('p');
+            p.innerHTML = heading.innerHTML;
+            p.style.fontWeight = '600';
+            p.style.margin = '12px 0 8px 0';
+            heading.parentNode.replaceChild(p, heading);
+         });
+
+         // Apply prose styling wrapper
+         const proseWrapper = document.createElement('div');
+         proseWrapper.className = 'prose-chat prose relative break-words';
+         proseWrapper.innerHTML = tempDiv.innerHTML;
+
+         // Enhance hotel names with icons
+         enhanceHotelNamesWithIcons(proseWrapper);
+
+         formattedHTML = proseWrapper.outerHTML;
+
+      } catch (error) {
+         console.error('Error formatting response:', error);
+         // Fallback: convert newlines to <br> tags
+         const textWithBreaks = text.replace(/\n/g, '<br>');
+         formattedHTML = `<div class="prose-chat prose relative break-words"><p>${textWithBreaks}</p></div>`;
+      }
+
+      // 🟢 STEP 2: Set up the formatted HTML immediately with click handlers
+      contentDiv.innerHTML = formattedHTML;
+
+      // Add click handlers to enhanced hotel elements
+      const hotelElements = contentDiv.querySelectorAll('.hotel-pill[data-hotel-id]');
+      hotelElements.forEach(element => {
+         element.addEventListener('click', function(e) {
+            e.preventDefault();
+            const hotelId = this.getAttribute('data-hotel-id');
+            const lat = parseFloat(this.getAttribute('data-lat'));
+            const lng = parseFloat(this.getAttribute('data-lng'));
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+               focusMapOnHotelWithAnimation(hotelId, lat, lng);
+            } else {
+               console.warn('Invalid coordinates for hotel:', hotelId);
+            }
+         });
+      });
+
+      // Add click handlers to draggable place elements
+      const placeElements = contentDiv.querySelectorAll('.draggable-place');
+      placeElements.forEach(element => {
+         element.addEventListener('click', function(e) {
+            e.preventDefault();
+            const placeName = this.textContent.trim();
+            console.log('Place clicked:', placeName);
+            // You can add place-specific functionality here
+         });
+      });
+
+      // 🟢 STEP 3: Apply line-by-line reveal effect to the formatted content
+      applyLineByLineReveal(contentDiv);
+   }
+
+   // Function to apply line-by-line reveal effect to formatted content
+   function applyLineByLineReveal(contentDiv) {
+      // Hide the content initially
+      contentDiv.style.opacity = '0';
+
+      // Get all text nodes and elements to reveal
+      const elementsToReveal = [];
+
+      // Split content by lines (paragraphs, list items, etc.)
+      const children = contentDiv.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, div');
+
+      if (children.length === 0) {
+         // If no structured elements, split by line breaks
+         const textContent = contentDiv.innerHTML;
+         const lines = textContent.split('<br>');
+
+         contentDiv.innerHTML = '';
+         lines.forEach((line) => {
+            if (line.trim()) {
+               const lineDiv = document.createElement('div');
+               lineDiv.innerHTML = line;
+               lineDiv.style.opacity = '0';
+               contentDiv.appendChild(lineDiv);
+               elementsToReveal.push(lineDiv);
+            }
+         });
+      } else {
+         // Hide all structured elements initially
+         children.forEach(element => {
+            element.style.opacity = '0';
+            elementsToReveal.push(element);
+         });
+      }
+
+      // Show the container
+      contentDiv.style.opacity = '1';
+
+      // Reveal elements one by one with typing-like timing
+      let currentIndex = 0;
+      const revealSpeed = 300; // ms between each line reveal
+
+      function revealNextElement() {
+         if (currentIndex < elementsToReveal.length) {
+            const element = elementsToReveal[currentIndex];
+
+            // Fade in the element
+            element.style.transition = 'opacity 0.2s ease-in';
+            element.style.opacity = '1';
+
+            // Scroll to keep the content in view
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            currentIndex++;
+            setTimeout(revealNextElement, revealSpeed);
          }
       }
 
-      typeChar();
+      // Start the reveal process
+      setTimeout(revealNextElement, 100);
    }
 
    // Spam protection variables
@@ -445,7 +580,10 @@ function createHotelCard(hotel) {
    card.className = 'hotel-card';
 
    const rating = hotel.hotelRating || 0;
-   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+   const fullStars = Math.floor(rating);
+   const filledStars = '★'.repeat(fullStars);
+   const emptyStars = '☆'.repeat(5 - fullStars);
+   const stars = filledStars + emptyStars;
 
    card.innerHTML = `
       <div class="hotel-header">
@@ -476,6 +614,122 @@ function createHotelCard(hotel) {
 
 function bookHotel(hotelId, hotelName) {
    alert(`Booking ${hotelName} (ID: ${hotelId}). Booking functionality will be implemented soon!`);
+}
+
+// Function to focus map on specific hotel when hotel name is clicked
+function focusMapOnHotel(hotelId, latitude, longitude) {
+   console.log('Focusing map on hotel:', hotelId, latitude, longitude);
+
+   // Show hotels tab if not already shown
+   showHotelsTab();
+
+   // Get the hotel map instance
+   if (window.hotelMap && window.hotelMap.map) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+         // Center map on the hotel
+         window.hotelMap.map.setCenter({ lat, lng });
+         window.hotelMap.map.setZoom(16);
+
+         // Find and trigger click on the corresponding marker
+         const marker = window.hotelMap.markers.find(m => {
+            const pos = m.getPosition();
+            return Math.abs(pos.lat() - lat) < 0.0001 && Math.abs(pos.lng() - lng) < 0.0001;
+         });
+
+         if (marker) {
+            // Trigger marker click to show info window
+            google.maps.event.trigger(marker, 'click');
+         }
+      }
+   } else {
+      console.warn('Hotel map not available');
+   }
+}
+
+
+
+// Function to enhance hotel names with icons after AI response is rendered
+function enhanceHotelNamesWithIcons(contentDiv) {
+   // Hotel bed icon SVG (black and white)
+   const hotelIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hotel-icon"><path d="M5.5 11.188h13.875a1.5 1.5 0 0 1 1.5 1.5v3.562H4v-3.563a1.5 1.5 0 0 1 1.5-1.5ZM4 16.25v2.25M20.875 16.25v2.25"></path><path d="M19.188 11.188V6.125A1.125 1.125 0 0 0 18.063 5H6.813a1.125 1.125 0 0 0-1.125 1.125v5.063"></path><path d="M9.813 8.375h5.25a.75.75 0 0 1 .75.75v2.063h-6.75V9.124a.75.75 0 0 1 .75-.75Z"></path></svg>';
+
+   // Find all hotel name links and enhance them with icons
+   const hotelLinks = contentDiv.querySelectorAll('.hotel-name-link');
+   hotelLinks.forEach(link => {
+      // Wrap the hotel name with icon and styling
+      const hotelName = link.textContent;
+      const hotelId = link.getAttribute('data-hotel-id');
+      const lat = link.getAttribute('data-lat');
+      const lng = link.getAttribute('data-lng');
+
+      // Create enhanced hotel element with white background and icon
+      const enhancedHotel = document.createElement('span');
+      enhancedHotel.className = 'hotel-pill';
+      enhancedHotel.setAttribute('data-hotel-id', hotelId);
+      enhancedHotel.setAttribute('data-lat', lat);
+      enhancedHotel.setAttribute('data-lng', lng);
+
+      enhancedHotel.innerHTML = `${hotelIcon}${hotelName}`;
+
+      // Replace the original link with the enhanced version
+      link.parentNode.replaceChild(enhancedHotel, link);
+   });
+}
+
+// Function to focus map on specific hotel with smooth animation
+function focusMapOnHotelWithAnimation(hotelId, latitude, longitude) {
+   console.log('Focusing map on hotel with animation:', hotelId, latitude, longitude);
+
+   // Show hotels tab if not already shown
+   showHotelsTab();
+
+   // Get the hotel map instance
+   if (window.hotelMap && window.hotelMap.map) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+         const map = window.hotelMap.map;
+
+         // Get current zoom
+         const currentZoom = map.getZoom();
+         const targetZoom = 16;
+
+         // Smooth pan to location (Google Maps handles the animation automatically)
+         map.panTo({ lat, lng });
+
+         // Animate zoom if needed
+         if (currentZoom < targetZoom) {
+            setTimeout(() => {
+               map.setZoom(targetZoom);
+            }, 800); // Wait for pan animation to mostly complete
+         }
+
+         // Find and trigger click on the corresponding marker after animation
+         setTimeout(() => {
+            const marker = window.hotelMap.markers.find(m => {
+               const pos = m.getPosition();
+               return Math.abs(pos.lat() - lat) < 0.0001 && Math.abs(pos.lng() - lng) < 0.0001;
+            });
+
+            if (marker) {
+               // Add bounce animation to marker
+               marker.setAnimation(google.maps.Animation.BOUNCE);
+
+               // Stop bouncing after 2 seconds and show info window
+               setTimeout(() => {
+                  marker.setAnimation(null);
+                  google.maps.event.trigger(marker, 'click');
+               }, 2000);
+            }
+         }, 1500); // Wait for both pan and zoom animations
+      }
+   } else {
+      console.warn('Hotel map not available');
+   }
 }
 
 // Add hotels to map from chat

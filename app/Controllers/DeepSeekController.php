@@ -649,7 +649,12 @@ Generate a helpful, conversational response:";
                // Format comprehensive hotel entry
                $memoryData .= "\n🏨 {$hotelName}\n";
                $memoryData .= "   • Location: {$address}" . ($locality ? ", {$locality}" : "") . "\n";
-               $memoryData .= "   • Type: {$propertyType} | Rating: {$rating}★ | Price: {$currency}{$total}/night\n";
+               // Generate 5-star rating display
+               $filledStars = str_repeat('★', $rating);
+               $emptyStars = str_repeat('☆', 5 - $rating);
+               $starDisplay = $filledStars . $emptyStars;
+
+               $memoryData .= "   • Type: {$propertyType} | Rating: {$starDisplay} | Price: {$currency}{$total}/night\n";
                $memoryData .= "   • Booking: {$fareType}\n";
 
                if ($tripAdvisorRating > 0) {
@@ -713,35 +718,41 @@ Generate a helpful, conversational response:";
 8. When asked HOW MANY hotels, COUNT them and give the exact number first, then list them
 9. You know EVERYTHING about each hotel - never say you don't have information
 
-📋 RESPONSE FORMAT:
-- Use natural conversational text (NO markdown, NO hashtags, NO special formatting)
+📋 RESPONSE FORMAT - ABSOLUTELY NO DASHES:
+- Use natural conversational text with clean, simple formatting
 - Include specific hotel details (name, price, rating, address)
 - When discussing hotels, mention multiple options with details
-- NO ### headers, NO ** bold text, NO markdown formatting, NO - bullet points
-- Write like you're talking to a friend, not writing documentation
-- Use simple numbered lists: 1. Hotel Name - details, 2. Hotel Name - details
+- For lists of hotels, use simple numbered format: 1. Hotel Name, 2. Hotel Name
+- For features or amenities, list them WITHOUT any dashes, bullets, or symbols
+- Write like you're talking to a friend with clear, organized information
+- CRITICAL: NO dashes (-), NO bullets (•), NO asterisks (*), NO ### headers, NO ** bold text
+- Use simple line breaks and spacing for organization
 - NEVER say in my database, from my database, in my memory - just provide the information naturally
+- Structure responses with clear sections using simple text and line breaks
+- Keep formatting minimal and clean - NO DASHES ANYWHERE
 
-🎯 EXAMPLES:
-Q: 'Nearest Hostel Pasay City details?'
-A: 'Yes! Nearest Hostel Pasay City By Reddoorz is a 1-star budget option in Pasay at ₱1,962.87 per night, located on 64 Legaspi, Aurora Blvd. It offers non-refundable bookings. Would you like to see other Pasay options too?'
-
-Q: 'Can you find hotel in 2231 Aurora Boulevard Former Tramo Corner Buenaven?'
-A: 'Yes! That address is Stone House Hotel Pasay, a 2-star hotel priced at PHP 1,991.05 per night. The hotel is located in Manila and offers refundable bookings. Would you like more details about Stone House Hotel Pasay or see other nearby options?'
-
-Q: 'Can you find hotel near me? 64 Legaspi, Aurora Blvd.'
-A: 'Yes! There is a hotel at that exact address - Nearest Hostel Pasay City By Reddoorz, a 1-star budget option priced at PHP 1,962.87 per night. The hotel is located in Pasay and offers non-refundable bookings. Would you like more details about this hostel or see other nearby options?'
-
+🎯 EXAMPLES - NO DASHES FORMAT WITH 5-STAR RATING:
 Q: 'Generate all hotels in Cebu'
-A: 'Here are the Cebu hotels I can recommend:
+A: 'Here are some excellent hotel options in Cebu:
 
-1. Sugbutel Family Hotel - 2-star, ₱2,156.25 per night, located at Colon Street, Cebu City. A family-friendly option in the heart of the city.
+1. Sugbutel Family Hotel
+Rating: ★★☆☆☆ (2-star family-friendly option)
+Price: ₱2,156.25 per night
+Located at Colon Street, Cebu City in the heart of the city
+Great for families visiting the historic center
 
-2. Residenz Guesthouse - 2-star, ₱1,205.88 per night, at S-36 San Jose Village, Umapad. A budget-friendly guesthouse with basic amenities.
+2. Residenz Guesthouse
+Rating: ★★☆☆☆ (Budget-friendly 2-star option)
+Price: ₱1,205.88 per night
+Located at S-36 San Jose Village, Umapad
+Perfect for budget travelers
 
-3. GV Tower Hotel - 3-star, ₱2,340.00 per night, on Mactan Island near the airport. Great for travelers with early flights.
+Would you like more details about any of these hotels or see additional options?'
 
-These are the Cebu hotels I know about. Would you like more details about any of them?'
+CRITICAL:
+- NO dashes anywhere in the response
+- Rating shows ALL 5 stars (filled ★ + empty ☆)
+- Each detail is on its own line without any dash, bullet, or symbol prefix
 
 Q: 'How many RedDoorz hotels in the Philippines?'
 A: 'I know about 3 RedDoorz hotels in the Philippines:
@@ -799,6 +810,13 @@ REMEMBER: Always respond in natural conversational text using the specific hotel
            if ($shouldShowHotelPanel) {
                // Extract hotel information from AI response and load hotel data
                $hotelData = $this->extractHotelDataFromAIResponse($cleanResponse, $userMessage);
+
+               // Format the response with clickable hotel names
+               $hotels = $hotelData['itineraries'] ?? [];
+               if (!empty($hotels)) {
+                   $formattedResponse = $this->formatMemoryBasedHotelResponse($cleanResponse, $hotels);
+                   $cleanResponse = $formattedResponse;
+               }
 
                return $this->response->setJSON([
                    'reply' => $cleanResponse,
@@ -2685,24 +2703,71 @@ Respond with ONLY the introduction text, nothing else.";
     }
 
     /**
-     * Format hotels for chat display
+     * Format hotels for chat display with clean, functional formatting
      */
     private function formatHotelsForChat($hotels, $isTagalog) {
         if (empty($hotels)) {
             return "";
         }
 
-        $hotelList = "\n\n";
+        $destination = $hotels[0]['city'] ?? 'your destination';
+        $hotelList = "\n\n**Hotels in " . ucwords($destination) . ":**\n\n";
 
-        foreach ($hotels as $hotel) {
+        foreach ($hotels as $index => $hotel) {
             $hotelName = $hotel['hotelName'] ?? 'Unknown Hotel';
             $aiDescription = $hotel['ai_description'] ?? 'No description available';
+            $rating = $hotel['hotelRating'] ?? 0;
+            $price = $hotel['total'] ?? '0';
+            $currency = $hotel['currency'] ?? 'PHP';
+            $hotelId = $hotel['hotelId'] ?? $index;
+            $latitude = $hotel['latitude'] ?? '';
+            $longitude = $hotel['longitude'] ?? '';
 
-            $hotelList .= "• **{$hotelName}**\n";
-            $hotelList .= "  {$aiDescription}\n\n";
+            // Create clickable hotel entry
+            $hotelList .= "**<span class=\"hotel-name-link\" data-hotel-id=\"{$hotelId}\" data-lat=\"{$latitude}\" data-lng=\"{$longitude}\" onclick=\"focusMapOnHotel('{$hotelId}', {$latitude}, {$longitude})\">{$hotelName}</span>**\n";
+            $hotelList .= "{$aiDescription}";
+
+            if ($rating > 0) {
+                // Generate 5-star rating display
+                $filledStars = str_repeat('★', $rating);
+                $emptyStars = str_repeat('☆', 5 - $rating);
+                $starDisplay = $filledStars . $emptyStars;
+                $hotelList .= " Rating: {$starDisplay}";
+            }
+            if ($price > 0) {
+                $hotelList .= " | Price: {$currency} {$price}/night";
+            }
+            $hotelList .= "\n\n";
         }
 
         return rtrim($hotelList);
+    }
+
+    /**
+     * Format memory-based AI response with clickable hotel names
+     */
+    private function formatMemoryBasedHotelResponse($aiResponse, $hotels) {
+        if (empty($hotels)) {
+            return $aiResponse;
+        }
+
+        $formattedResponse = $aiResponse;
+
+        // Replace hotel names in the AI response with clickable versions
+        foreach ($hotels as $index => $hotel) {
+            $hotelName = $hotel['hotelName'] ?? 'Unknown Hotel';
+            $hotelId = $hotel['hotelId'] ?? $index;
+            $latitude = $hotel['latitude'] ?? '';
+            $longitude = $hotel['longitude'] ?? '';
+
+            // Create clickable hotel name
+            $clickableHotelName = "<span class=\"hotel-name-link\" data-hotel-id=\"{$hotelId}\" data-lat=\"{$latitude}\" data-lng=\"{$longitude}\">{$hotelName}</span>";
+
+            // Replace the hotel name in the response (case insensitive)
+            $formattedResponse = str_ireplace($hotelName, "**{$clickableHotelName}**", $formattedResponse);
+        }
+
+        return $formattedResponse;
     }
 
     /**
@@ -2867,100 +2932,6 @@ Respond with ONLY a JSON object: {\"city\": \"city_name_or_null\", \"specific_lo
         return ['city' => null, 'specific_location' => null, 'reasoning' => 'No location context available'];
     }
 
-    /**
-     * AI-POWERED location extraction - Captures both city and specific location!
-     */
-    private function extractLocationWithAI($conversationContext) {
-        try {
-            /** @var \Config\DeepSeek $deepseekConfig */
-            $deepseekConfig = config('DeepSeek');
-            $apiKey = getenv('OPENAI_API_KEY');
-
-            if (empty($apiKey) || !$deepseekConfig || empty($deepseekConfig->model) || empty($deepseekConfig->apiUrl)) {
-                log_message('info', "AI LOCATION EXTRACTION: API not configured, using simple fallback");
-                return $this->simpleLocationFallback($conversationContext);
-            }
-
-            log_message('info', "AI LOCATION EXTRACTION: Starting AI analysis for: '{$conversationContext}'");
-
-            $prompt = "You are a Philippine travel expert. Extract BOTH the city and specific location from this hotel search request.
-
-CONVERSATION CONTEXT:
-{$conversationContext}
-
-TASK: Identify both the main city and any specific location/area mentioned. If NO location is mentioned, return null.
-
-EXAMPLES:
-- \"hotel in Manila\" → {\"city\": \"manila\", \"specific_location\": null}
-- \"hotel in Intramuros Rizal\" → {\"city\": \"manila\", \"specific_location\": \"intramuros\"}
-- \"accommodation near Rizal Park\" → {\"city\": \"manila\", \"specific_location\": \"rizal park\"}
-- \"hotels in Moalboal Cebu\" → {\"city\": \"cebu\", \"specific_location\": \"moalboal\"}
-- \"stay in El Nido\" → {\"city\": \"palawan\", \"specific_location\": \"el nido\"}
-- \"find me hotels\" → {\"city\": null, \"specific_location\": null}
-- \"book a hotel\" → {\"city\": null, \"specific_location\": null}
-- \"I need accommodation\" → {\"city\": null, \"specific_location\": null}
-
-CRITICAL RULES:
-1. ONLY extract locations that are explicitly mentioned in the text
-2. DO NOT guess or assume any location if none is mentioned
-3. If no city/location is mentioned, return {\"city\": null, \"specific_location\": null}
-4. Map landmarks to cities (e.g., \"Intramuros\" = Manila city)
-5. Handle local variations (\"GenSan\" = General Santos)
-
-Respond with ONLY a JSON object: {\"city\": \"city_name_or_null\", \"specific_location\": \"area_name_or_null\"}";
-
-            $payload = [
-                'model' => $deepseekConfig->model,
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.1
-            ];
-
-            $ch = curl_init($deepseekConfig->apiUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $apiKey
-            ]);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 second timeout
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // 5 second connection timeout
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-
-            if ($curlError) {
-                log_message('error', "AI LOCATION EXTRACTION: cURL error: " . $curlError);
-                return $this->simpleLocationFallback($conversationContext);
-            }
-
-            log_message('info', "AI LOCATION EXTRACTION: HTTP Code: {$httpCode}");
-
-            if ($httpCode === 200 && $response) {
-                $data = json_decode($response, true);
-                if (isset($data['choices'][0]['message']['content'])) {
-                    $aiResponse = trim($data['choices'][0]['message']['content']);
-                    $locationInfo = json_decode($aiResponse, true);
-
-                    if ($locationInfo && isset($locationInfo['city'])) {
-                        log_message('info', "AI LOCATION EXTRACTION: Success - " . json_encode($locationInfo));
-                        return $locationInfo;
-                    }
-                }
-            }
-
-            log_message('warning', "AI LOCATION EXTRACTION: Failed to parse response, using fallback");
-            return $this->simpleLocationFallback($conversationContext);
-
-        } catch (Exception $e) {
-            log_message('error', "AI location extraction failed: " . $e->getMessage());
-            return $this->simpleLocationFallback($conversationContext);
-        }
-    }
 
     /**
      * Simple location fallback when AI is not available - STRICT matching only

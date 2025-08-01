@@ -1,0 +1,24 @@
+{
+  "name": "ai-agent-integration",
+  "version": "1.0.0",
+  "description": "AI Travel Companion with Browser Sync for development",
+  "main": "index.js",
+  "scripts": {
+    "dev": "browser-sync start --proxy \"localhost/ai-agent-integration/public\" --files \"**/*.php\" \"**/*.css\" \"**/*.js\" \"**/*.html\" --ignore \"node_modules/**\" --ignore \"vendor/**\" --reload-delay 300",
+    "dev-watch": "browser-sync start --proxy \"localhost/ai-agent-integration/public\" --files \"app/**/*.php\" \"public/**/*.css\" \"public/**/*.js\" \"public/**/*.html\" --reload-delay 300 --no-open",
+    "dev-open": "browser-sync start --proxy \"localhost/ai-agent-integration/public\" --files \"app/**/*.php\" \"public/**/*.css\" \"public/**/*.js\" \"public/**/*.html\" --reload-delay 300",
+    "sync": "browser-sync start --proxy \"localhost/ai-agent-integration/public\" --files \"C:/MIS/htdocs/ai-agent-integration/**\" --ignore \"node_modules/**\" --ignore \"vendor/**\" --reload-delay 300"
+  },
+  "keywords": [
+    "codeigniter",
+    "php",
+    "browser-sync",
+    "development",
+    "ai-travel"
+  ],
+  "author": "AI Agent Integration Team",
+  "license": "MIT",
+  "devDependencies": {
+    "browser-sync": "^3.0.2"
+  }
+}

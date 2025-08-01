@@ -78,7 +78,7 @@ class HotelMap {
             };
 
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&loading=async&callback=${callbackName}`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyANvqC2YcKdFiOB5ZSBRZbZfzOl5EzmVdU&libraries=geometry&loading=async&callback=${callbackName}`;
             script.async = true;
             script.defer = true;
 
@@ -117,59 +117,193 @@ class HotelMap {
             keyboardShortcuts: false,
             backgroundColor: '#ffffff',
             styles: [
-                {
-                    "featureType": "administrative.land_parcel",
-                    "elementType": "labels",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                },
-                {
-                    "featureType": "poi",
-                    "elementType": "labels.text",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                },
-                {
-                    "featureType": "poi.business",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                },
-                {
-                    "featureType": "road",
-                    "elementType": "labels.icon",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                },
-                {
-                    "featureType": "road.local",
-                    "elementType": "labels",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                },
-                {
-                    "featureType": "transit",
-                    "stylers": [
-                        {
-                            "visibility": "off"
-                        }
-                    ]
-                }
-            ]
+               {
+                 "featureType": "administrative.land_parcel",
+                 "elementType": "labels",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "landscape.natural",
+                 "elementType": "geometry.fill",
+                 "stylers": [
+                   {
+                     "color": "#c7e8d0"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "landscape.natural.terrain",
+                 "elementType": "geometry.fill",
+                 "stylers": [
+                   {
+                     "color": "#b2d6a3"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "poi",
+                 "elementType": "labels.text",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "poi",
+                 "elementType": "labels.text.fill",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "poi.business",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "poi.business",
+                 "elementType": "labels.text",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "poi.park",
+                 "elementType": "labels.text.fill",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road",
+                 "elementType": "labels.icon",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.arterial",
+                 "elementType": "labels",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.arterial",
+                 "elementType": "labels.icon",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.highway",
+                 "elementType": "geometry.fill",
+                 "stylers": [
+                   {
+                     "color": "#ffffff"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.highway",
+                 "elementType": "geometry.stroke",
+                 "stylers": [
+                   {
+                     "color": "#dcdcdc"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.highway",
+                 "elementType": "labels",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.highway",
+                 "elementType": "labels.icon",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.local",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.local",
+                 "elementType": "labels",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "road.local",
+                 "elementType": "labels.icon",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "transit",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "transit",
+                 "elementType": "labels.text",
+                 "stylers": [
+                   {
+                     "visibility": "off"
+                   }
+                 ]
+               },
+               {
+                 "featureType": "water",
+                 "elementType": "geometry.fill",
+                 "stylers": [
+                   {
+                     "color": "#c9e5f5"
+                   }
+                 ]
+               }
+             ]
         });
 
         this.infoWindow = new google.maps.InfoWindow();
@@ -204,23 +338,27 @@ class HotelMap {
         this.currentHotels = hotels;
         const bounds = new google.maps.LatLngBounds();
 
-        hotels.forEach((hotel, index) => {
+        // Process all hotels and wait for all markers to be created
+        const markerPromises = hotels.map(async (hotel, index) => {
             const lat = parseFloat(hotel.latitude);
             const lng = parseFloat(hotel.longitude);
-            
+
             if (isNaN(lat) || isNaN(lng)) {
                 console.warn('Invalid coordinates for hotel:', hotel.hotelName);
-                return;
+                return null;
             }
 
             const position = { lat, lng };
+
+            // Create the icon with background
+            const iconUrl = await this.createHotelIconWithBackground();
 
             const marker = new google.maps.Marker({
                 position: position,
                 map: this.map,
                 title: hotel.hotelName,
                 icon: {
-                    url: this.createHotelMarkerIcon(hotel.hotelRating),
+                    url: iconUrl,
                     scaledSize: new google.maps.Size(32, 32),
                     anchor: new google.maps.Point(16, 32),
                     labelOrigin: new google.maps.Point(16, -10)
@@ -241,7 +379,12 @@ class HotelMap {
 
             this.markers.push(marker);
             bounds.extend(position);
+
+            return marker;
         });
+
+        // Wait for all markers to be created, then fit bounds
+        await Promise.all(markerPromises);
 
         if (this.markers.length > 0) {
             this.map.fitBounds(bounds);
@@ -254,31 +397,55 @@ class HotelMap {
         }
     }
 
-    createHotelMarkerIcon(rating) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d');
+    async createHotelIconWithBackground() {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 56;
+            canvas.height = 56;
+            const ctx = canvas.getContext('2d');
 
-        ctx.beginPath();
-        ctx.arc(16, 16, 15, 0, 2 * Math.PI);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+            // Draw white circular background
+            ctx.beginPath();
+            ctx.arc(28, 28, 28, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            ctx.stroke();
 
-        ctx.fillStyle = '#000000';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
+            // Add shadow effect to the circle
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
 
-        ctx.fillRect(8, 18, 16, 4);
-        ctx.fillRect(7, 14, 2, 6);
-        ctx.fillRect(9, 22, 1, 3);
-        ctx.fillRect(22, 22, 1, 3);
-        ctx.fillRect(10, 16, 4, 2);
+            // Redraw the circle with shadow
+            ctx.beginPath();
+            ctx.arc(28, 28, 28, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
 
-        return canvas.toDataURL();
+            // Create and load the hotel bed icon
+            const img = new Image();
+            img.onload = () => {
+                // Clear shadow for the icon
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                // Draw the hotel bed icon in the center (32x32 icon with 12px padding)
+                ctx.drawImage(img, 12, 12, 32, 32);
+                resolve(canvas.toDataURL());
+            };
+
+            img.onerror = () => {
+                // If image fails to load, just return the white circle
+                resolve(canvas.toDataURL());
+            };
+
+            img.src = 'icon/hotel_bed_icon.png';
+        });
     }
 
     showHotelDetails(hotel, marker) {
